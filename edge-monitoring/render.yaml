@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: edgex-backend
+    env: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: APP_URL
+        value: https://edgex.vigotech.in
+      - key: API_BASE_URL
+        value: https://api.edgex.vigotech.in
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.resend.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        value: resend
+      - key: EMAIL_PASS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: EdgeX <no-reply@edgex.vigotech.in>
+      - key: RESEND_FROM
+        value: EdgeX <no-reply@edgex.vigotech.in>
+      - key: SUPER_ADMIN_EMAIL
+        value: vivekgopi07@gmail.com
+
+  - type: static
+    name: edgex-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        value: https://api.edgex.vigotech.in/api/v1
