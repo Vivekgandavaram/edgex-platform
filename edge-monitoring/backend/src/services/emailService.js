@@ -1,13 +1,37 @@
 const nodemailer = require('nodemailer');
 const env = require('../config/env');
 
+// Resend's HTTP API is used whenever EMAIL_HOST points at Resend and
+// EMAIL_PASS holds a Resend API key (starts with "re_"). This avoids raw
+// SMTP entirely — many hosting platforms (including Render's free tier)
+// block outbound SMTP ports, but a plain HTTPS request is never blocked.
+function isResendConfigured() {
+  return env.email.host === 'smtp.resend.com' && env.email.pass?.startsWith('re_');
+}
+
+async function sendViaResendApi({ to, subject, html }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.email.pass}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from: env.email.from, to, subject, html }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend API error (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+// Fallback path for any other SMTP provider (Gmail app password, SES, etc.)
+// if EMAIL_HOST isn't Resend.
 let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
-  if (!env.email.host || !env.email.user) {
-    console.warn('[email] SMTP not configured — emails will be logged to console instead of sent.');
-    return null;
-  }
+  if (!env.email.host || !env.email.user) return null;
   transporter = nodemailer.createTransport({
     host: env.email.host,
     port: env.email.port,
@@ -18,6 +42,16 @@ function getTransporter() {
 }
 
 async function send({ to, subject, html }) {
+  if (isResendConfigured()) {
+    try {
+      return await sendViaResendApi({ to, subject, html });
+    } catch (err) {
+      console.error('[email] Resend API send failed, falling back to console log:', err.message);
+      console.log(`[email:dev] To: ${to} | Subject: ${subject}\n${html}\n`);
+      return { devMode: true };
+    }
+  }
+
   const t = getTransporter();
   if (!t) {
     console.log(`[email:dev] To: ${to} | Subject: ${subject}\n${html}\n`);
@@ -26,10 +60,10 @@ async function send({ to, subject, html }) {
 
   try {
     return await t.sendMail({ from: env.email.from, to, subject, html });
-  } catch (error) {
-    console.warn(`[email] SMTP send failed; falling back to console log: ${error.message}`);
+  } catch (err) {
+    console.error('[email] SMTP send failed, falling back to console log:', err.message);
     console.log(`[email:dev] To: ${to} | Subject: ${subject}\n${html}\n`);
-    return { devMode: true, fallback: true, error: error.message };
+    return { devMode: true };
   }
 }
 
