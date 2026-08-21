@@ -2,8 +2,8 @@ import GlassPanel from '../../components/ui/GlassPanel';
 
 export default function AuthShell({ children }) {
   return (
-    <div className="auth-shell flex min-h-screen w-full flex-col bg-base px-4 py-4 text-ink lg:px-6 lg:py-6">
-      <div className="auth-shell-frame relative mx-auto flex w-full flex-1 overflow-hidden">
+    <div className="auth-shell flex min-h-screen w-full flex-col bg-base text-ink">
+      <div className="auth-shell-frame relative flex w-full flex-1 overflow-hidden">
         <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="auth-bg-blur auth-bg-blur-left" />
           <div className="auth-bg-blur auth-bg-blur-right" />
