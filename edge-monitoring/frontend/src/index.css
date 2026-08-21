@@ -73,14 +73,11 @@ h1, h2, h3,
 }
 
 .auth-shell-frame {
-  width: 100%;
-  min-height: calc(100vh - 2rem);
   border: none;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(2, 6, 16, 0.96), rgba(2, 5, 12, 0.96));
   box-shadow: none;
 }
-
 .auth-shell-frame::before {
   content: "";
   position: absolute;
