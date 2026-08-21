@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthShell from './AuthShell';
 import Input from '../../components/ui/Input';
@@ -10,6 +10,7 @@ export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const googleButtonRef = useRef(null);
+  const googleInitialized = useRef(false); // ensures Google's button is only ever rendered once
   const [form, setForm] = useState({ email: '', password: '' });
   const [state, setState] = useState({ status: 'idle', error: null }); // idle | loading | error
   const googleConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID && import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your_google_oauth_client_id');
@@ -25,66 +26,56 @@ export default function Login() {
     }
   };
 
+  const handleGoogleCredential = useCallback(
+    async (response) => {
+      setState({ status: 'loading', error: null });
+      try {
+        await loginWithGoogle(response.credential);
+        navigate('/');
+      } catch (err) {
+        setState({ status: 'error', error: err.message });
+      }
+    },
+    [loginWithGoogle, navigate]
+  );
+  const handleGoogleCredentialRef = useRef(handleGoogleCredential);
   useEffect(() => {
-    if (!googleConfigured || !window.google || !googleButtonRef.current) return;
-
-    window.google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: async (response) => {
-        setState({ status: 'loading', error: null });
-        try {
-          await loginWithGoogle(response.credential);
-          navigate('/');
-        } catch (err) {
-          setState({ status: 'error', error: err.message });
-        }
-      },
-    });
-
-    window.google.accounts.id.renderButton(googleButtonRef.current, {
-      theme: 'outline',
-      size: 'large',
-      width: '100%',
-      text: 'continue_with',
-      shape: 'pill',
-    });
-  }, [googleConfigured, loginWithGoogle, navigate]);
+    handleGoogleCredentialRef.current = handleGoogleCredential;
+  }, [handleGoogleCredential]);
 
   useEffect(() => {
-    if (!googleConfigured || window.google) return;
+    if (!googleConfigured || googleInitialized.current) return;
+
+    function setup() {
+      if (!window.google || !googleButtonRef.current || googleInitialized.current) return;
+      googleInitialized.current = true;
+
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        callback: (response) => handleGoogleCredentialRef.current(response),
+      });
+
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: '320',
+        text: 'continue_with',
+        shape: 'pill',
+      });
+    }
+
+    if (window.google) {
+      setup();
+      return;
+    }
 
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      if (window.google && googleButtonRef.current) {
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: async (response) => {
-            setState({ status: 'loading', error: null });
-            try {
-              await loginWithGoogle(response.credential);
-              navigate('/');
-            } catch (err) {
-              setState({ status: 'error', error: err.message });
-            }
-          },
-        });
-
-        window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: 'outline',
-          size: 'large',
-          width: '100%',
-          text: 'continue_with',
-          shape: 'pill',
-        });
-      }
-    };
-
+    script.onload = setup;
     document.body.appendChild(script);
-    return () => script.remove();
-  }, [googleConfigured, loginWithGoogle, navigate]);
+  }, [googleConfigured]);
 
   return (
     <AuthShell>
@@ -117,11 +108,11 @@ export default function Login() {
 
       <div className="flex flex-col gap-2.5">
         {googleConfigured ? (
-          <div ref={googleButtonRef} className="w-full" />
+          <div ref={googleButtonRef} className="flex justify-center" />
         ) : (
-          <div className="rounded-xl border border-border bg-white/[0.02] p-3 text-xs text-muted">
-            Google sign-in is disabled in local dev. Use email sign-up or OTP instead.
-          </div>
+          <Button variant="ghost" className="w-full" onClick={() => alert('Google sign-in is not configured yet.')}>
+            Continue with Google
+          </Button>
         )}
         <Link to="/otp-login">
           <Button variant="ghost" className="w-full">Login with Email OTP</Button>
