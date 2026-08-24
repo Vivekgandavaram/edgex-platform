@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import GlassPanel from '../components/ui/GlassPanel';
+import { endpoints } from '../lib/api';
 import Input from '../components/ui/Input';
 import PasswordInput from '../components/ui/PasswordInput';
 import Button from '../components/ui/Button';
@@ -8,8 +9,21 @@ import { useAuth } from '../lib/auth-context';
 const SECTIONS = ['Account', 'Workspace', 'Security', 'Notifications', 'System'];
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [active, setActive] = useState('Account');
+  const [name, setName] = useState(user?.name || '');
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '' });
+  const [feedback, setFeedback] = useState({ message: '', error: '' });
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    try { await endpoints.updateProfile({ name }); await refresh(); setFeedback({ message: 'Profile saved.', error: '' }); } catch (err) { setFeedback({ message: '', error: err.message }); }
+  };
+
+  const changePassword = async (event) => {
+    event.preventDefault();
+    try { await endpoints.changePassword(passwords); setPasswords({ currentPassword: '', newPassword: '' }); setFeedback({ message: 'Password changed.', error: '' }); } catch (err) { setFeedback({ message: '', error: err.message }); }
+  };
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -23,17 +37,18 @@ export default function Settings() {
         {active === 'Account' && (
           <div className="max-w-md">
             <h2 className="text-lg font-semibold text-ink">Profile</h2>
-            <div className="mt-4 flex flex-col gap-4">
-              <Input label="Name" defaultValue={user?.name} />
+            <form onSubmit={saveProfile} className="mt-4 flex flex-col gap-4">
+              <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
               <Input label="Email" defaultValue={user?.email} disabled />
-              <Button className="w-fit">Save Changes</Button>
-            </div>
+              <Button type="submit" className="w-fit">Save Changes</Button>
+            </form>
             <h2 className="mt-8 text-lg font-semibold text-ink">Password</h2>
-            <div className="mt-4 flex flex-col gap-4">
-              <PasswordInput label="Current password" />
-              <PasswordInput label="New password" />
-              <Button variant="ghost" className="w-fit">Change Password</Button>
-            </div>
+            <form onSubmit={changePassword} className="mt-4 flex flex-col gap-4">
+              <PasswordInput label="Current password" value={passwords.currentPassword} onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })} />
+              <PasswordInput label="New password" value={passwords.newPassword} onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })} />
+              <Button type="submit" variant="ghost" className="w-fit">Change Password</Button>
+            </form>
+            {(feedback.message || feedback.error) && <p className={`mt-4 text-xs ${feedback.error ? 'text-crimson' : 'text-emerald'}`}>{feedback.error || feedback.message}</p>}
           </div>
         )}
         {active === 'Workspace' && <p className="text-sm text-muted">Organization and location settings will appear here once configured on the backend.</p>}

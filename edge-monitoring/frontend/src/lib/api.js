@@ -34,6 +34,8 @@ export const endpoints = {
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (body) => api.post('/auth/reset-password', body),
   me: () => api.get('/auth/me'),
+  updateProfile: (body) => api.put('/auth/profile', body),
+  changePassword: (body) => api.post('/auth/change-password', body),
   logout: () => api.post('/auth/logout'),
 
   // devices
@@ -66,5 +68,7 @@ export const endpoints = {
   createUser: (body) => api.post('/users', body),
   listAdmins: () => api.get('/admins'),
   createAdmin: (body) => api.post('/admins', body),
+  updateAdmin: (id, body) => api.put(`/admins/${id}`, body),
+  disableAdmin: (id) => api.post(`/admins/${id}/disable`),
   listAuditLogs: (params) => api.get('/audit-logs', { params }),
 };

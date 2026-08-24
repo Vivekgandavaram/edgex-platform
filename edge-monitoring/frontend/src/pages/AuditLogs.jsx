@@ -5,21 +5,23 @@ import GlassPanel from '../components/ui/GlassPanel';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { RowSkeleton } from '../components/ui/LoadingSkeleton';
+import Pagination from '../components/ui/Pagination';
 
 export default function AuditLogs() {
-  const [state, setState] = useState({ status: 'loading', logs: [], error: null });
+  const [page, setPage] = useState(1);
+  const [state, setState] = useState({ status: 'loading', logs: [], total: 0, error: null });
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
     try {
-      const res = await endpoints.listAuditLogs({ limit: 100 });
-      setState({ status: 'ready', logs: res.data.logs, error: null });
+      const res = await endpoints.listAuditLogs({ page, limit: 20 });
+      setState({ status: 'ready', logs: res.data.logs, total: res.data.total, error: null });
     } catch (err) {
       setState((s) => ({ ...s, status: 'error', error: err.message }));
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [page]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,6 +51,7 @@ export default function AuditLogs() {
               </div>
             ))}
           </div>
+          <div className="px-5 pb-4"><Pagination page={page} total={state.total} limit={20} onChange={setPage} /></div>
         </GlassPanel>
       )}
     </div>

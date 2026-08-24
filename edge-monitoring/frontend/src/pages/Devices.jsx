@@ -9,24 +9,27 @@ import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { RowSkeleton } from '../components/ui/LoadingSkeleton';
+import Pagination from '../components/ui/Pagination';
 
 export default function Devices() {
   const [state, setState] = useState({ status: 'loading', devices: [], error: null });
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
     try {
-      const res = await endpoints.listDevices({ search: search || undefined, limit: 50 });
-      setState({ status: 'ready', devices: res.data.devices, error: null });
+      const res = await endpoints.listDevices({ search: search || undefined, page, limit: 10 });
+      setState({ status: 'ready', devices: res.data.devices, total: res.data.total, error: null });
     } catch (err) {
       setState((s) => ({ ...s, status: 'error', error: err.message }));
     }
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line
-  useEffect(() => { const t = setTimeout(load, 350); return () => clearTimeout(t); }, [search]); // eslint-disable-line
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { const t = setTimeout(load, 350); return () => clearTimeout(t); }, [search, page]); // eslint-disable-line
 
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +91,7 @@ export default function Devices() {
               ))}
             </tbody>
           </table>
+          <div className="px-5 pb-4"><Pagination page={page} total={state.total || 0} limit={10} onChange={setPage} /></div>
         </GlassPanel>
       )}
 

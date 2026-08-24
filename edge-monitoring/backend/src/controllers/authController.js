@@ -253,6 +253,31 @@ exports.me = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { user: publicUser(req.user) } });
 });
 
+// PUT /api/v1/auth/profile
+exports.updateProfile = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) throw new ApiError(400, 'VALIDATION_ERROR', 'Name is required.');
+  req.user.name = name.trim();
+  await req.user.save();
+  await audit.record({ actor: req.user, action: 'user.profile_updated', resourceType: 'User', resourceId: req.user._id.toString(), ipAddress: req.ip });
+  res.json({ success: true, data: { user: publicUser(req.user) } });
+});
+
+// POST /api/v1/auth/change-password
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) throw new ApiError(400, 'VALIDATION_ERROR', 'Current and new passwords are required.');
+  if (!isStrongPassword(newPassword)) throw new ApiError(400, 'WEAK_PASSWORD', 'Password must be 8+ characters with upper, lower and a number.');
+  const user = await User.findById(req.user._id).select('+passwordHash');
+  if (!user.passwordHash || !(await comparePassword(currentPassword, user.passwordHash))) {
+    throw new ApiError(401, 'INVALID_PASSWORD', 'Current password is incorrect.');
+  }
+  user.passwordHash = await hashPassword(newPassword);
+  await user.save();
+  await audit.record({ actor: user, action: 'user.password_changed', resourceType: 'User', resourceId: user._id.toString(), ipAddress: req.ip });
+  res.json({ success: true, data: { message: 'Password updated.' } });
+});
+
 // POST /api/v1/auth/logout
 exports.logout = asyncHandler(async (req, res) => {
   res.clearCookie('edgex_refresh');

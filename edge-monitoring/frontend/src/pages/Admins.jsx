@@ -22,6 +22,7 @@ export default function Admins() {
   const { user } = useAuth();
   const [state, setState] = useState({ status: 'loading', admins: [], error: null });
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
@@ -74,7 +75,7 @@ export default function Admins() {
                   <td className="px-5 py-3.5 font-medium text-ink">{a.name}</td>
                   <td className="px-5 py-3.5 text-muted">{a.email}</td>
                   <td className="px-5 py-3.5 text-muted">{a.role.replace('_', ' ')}</td>
-                  <td className="px-5 py-3.5 text-muted">{a.role === 'SUPER_ADMIN' ? 'Global' : `${a.permissions?.length || 0} granted`}</td>
+                  <td className="px-5 py-3.5 text-muted">{a.role === 'SUPER_ADMIN' ? 'Global' : <button className="text-cyan hover:underline" onClick={() => setEditing(a)}>{a.permissions?.length || 0} granted · Edit</button>}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={a.status} /></td>
                 </tr>
               ))}
@@ -84,8 +85,17 @@ export default function Admins() {
       )}
 
       {modalOpen && <AddAdminModal onClose={() => setModalOpen(false)} onCreated={load} />}
+      {editing && <EditAdminModal admin={editing} onClose={() => setEditing(null)} onUpdated={load} />}
     </div>
   );
+}
+
+function EditAdminModal({ admin, onClose, onUpdated }) {
+  const [permissions, setPermissions] = useState(admin.permissions || []);
+  const [state, setState] = useState({ loading: false, error: '' });
+  const toggle = (permission) => setPermissions((current) => current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission]);
+  const submit = async (event) => { event.preventDefault(); setState({ loading: true, error: '' }); try { await endpoints.updateAdmin(admin._id, { permissions }); await onUpdated(); onClose(); } catch (err) { setState({ loading: false, error: err.message }); } };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}><GlassPanel strong className="w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}><h2 className="text-lg font-semibold text-ink">Edit permissions</h2><p className="mt-1 text-sm text-muted">{admin.name}</p><form onSubmit={submit} className="mt-4"><div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">{ALL_PERMISSIONS.map((permission) => <label key={permission} className="flex gap-2 text-xs text-muted"><input type="checkbox" checked={permissions.includes(permission)} onChange={() => toggle(permission)} className="accent-cyan-500" />{permission}</label>)}</div>{state.error && <p className="mt-3 text-xs text-crimson">{state.error}</p>}<div className="mt-5 flex justify-end gap-2"><Button variant="ghost" type="button" onClick={onClose}>Cancel</Button><Button type="submit" disabled={state.loading}>{state.loading ? 'Saving…' : 'Save permissions'}</Button></div></form></GlassPanel></div>;
 }
 
 function AddAdminModal({ onClose, onCreated }) {

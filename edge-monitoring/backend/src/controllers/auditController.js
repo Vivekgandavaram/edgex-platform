@@ -3,10 +3,11 @@ const asyncHandler = require('../utils/asyncHandler');
 
 // GET /api/v1/audit-logs
 exports.listAuditLogs = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 50, action, actorId, from, to } = req.query;
+  const { page = 1, limit = 50, action, actorId, resourceId, from, to } = req.query;
   const filter = {};
   if (action) filter.action = action;
   if (actorId) filter.actorId = actorId;
+  if (resourceId) filter.resourceId = resourceId;
   if (from || to) {
     filter.createdAt = {};
     if (from) filter.createdAt.$gte = new Date(from);

@@ -41,8 +41,8 @@ function AppRoutes() {
       <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/live" element={<Live />} />
-        <Route path="/devices" element={canAccessRoute(user, '/devices') ? <Devices /> : <Navigate to="/" replace />} />
-        <Route path="/devices/:id" element={canAccessRoute(user, '/devices/:id') ? <DeviceDetail /> : <Navigate to="/" replace />} />
+        <Route path="/devices" element={<ProtectedRoute permission="devices.read"><Devices /></ProtectedRoute>} />
+        <Route path="/devices/:id" element={<ProtectedRoute permission="devices.read"><DeviceDetail /></ProtectedRoute>} />
         <Route path="/sensors" element={canAccessRoute(user, '/sensors') ? <Sensors /> : <Navigate to="/" replace />} />
         <Route path="/locations" element={canAccessRoute(user, '/locations') ? <Locations /> : <Navigate to="/" replace />} />
         <Route path="/analytics" element={canAccessRoute(user, '/analytics') ? <Analytics /> : <Navigate to="/" replace />} />

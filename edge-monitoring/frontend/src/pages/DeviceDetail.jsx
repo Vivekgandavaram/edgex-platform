@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Radio } from 'lucide-react';
+import { ArrowLeft, Radio, Activity, BellRing, KeyRound, ScrollText } from 'lucide-react';
 import { endpoints } from '../lib/api';
 import GlassPanel from '../components/ui/GlassPanel';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -15,6 +15,7 @@ export default function DeviceDetail() {
   const { id } = useParams();
   const [tab, setTab] = useState('Overview');
   const [state, setState] = useState({ status: 'loading', device: null, sensors: [], error: null });
+  const [panel, setPanel] = useState({ status: 'idle', readings: [], alerts: [], logs: [], error: null });
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
@@ -30,6 +31,25 @@ export default function DeviceDetail() {
   };
 
   useEffect(() => { load(); }, [id]); // eslint-disable-line
+  useEffect(() => {
+    if (!state.device || tab === 'Overview' || tab === 'Telemetry') return;
+    const loadPanel = async () => {
+      setPanel((current) => ({ ...current, status: 'loading', error: null }));
+      try {
+        if (tab === 'Analytics') {
+          const res = await endpoints.read({ deviceId: state.device.deviceId, from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), limit: 100 });
+          setPanel({ status: 'ready', readings: res.data.readings, alerts: [], logs: [], error: null });
+        } else if (tab === 'Alerts') {
+          const res = await endpoints.listAlerts({ deviceId: state.device._id, limit: 25 });
+          setPanel({ status: 'ready', readings: [], alerts: res.data.alerts, logs: [], error: null });
+        } else if (tab === 'Audit') {
+          const res = await endpoints.listAuditLogs({ limit: 25, resourceId: state.device.deviceId });
+          setPanel({ status: 'ready', readings: [], alerts: [], logs: res.data.logs, error: null });
+        } else setPanel({ status: 'ready', readings: [], alerts: [], logs: [], error: null });
+      } catch (err) { setPanel((current) => ({ ...current, status: 'error', error: err.message })); }
+    };
+    loadPanel();
+  }, [tab, state.device]);
 
   if (state.status === 'loading') return <ChartSkeleton />;
   if (state.status === 'error') return <ErrorState description={state.error} onRetry={load} />;
@@ -80,10 +100,17 @@ export default function DeviceDetail() {
         )
       )}
 
-      {tab === 'Analytics' && <EmptyState title="No telemetry available for this period." description="Select a device and time range in Analytics to view historical charts." />}
-      {tab === 'Alerts' && <EmptyState title="No active alerts" description="Everything is clear for this device." />}
-      {tab === 'API' && <EmptyState title="View this device's keys in API Management" description="API keys are managed centrally in the API Management section." />}
-      {tab === 'Audit' && <EmptyState title="No audit events for this device yet." />}
+      {tab === 'Analytics' && <DataPanel loading={panel.status === 'loading'} error={panel.error} icon={Activity} title="Recent telemetry" empty={!panel.readings.length} description="No readings reported in the last 24 hours." items={panel.readings.map((reading) => `${reading.metric}: ${reading.value ?? JSON.stringify(reading.values)} · ${new Date(reading.timestamp).toLocaleString()}`)} />}
+      {tab === 'Alerts' && <DataPanel loading={panel.status === 'loading'} error={panel.error} icon={BellRing} title="Device alerts" empty={!panel.alerts.length} description="No alerts have been recorded for this device." items={panel.alerts.map((alert) => `${alert.metric} = ${alert.value} · ${alert.status} · ${new Date(alert.createdAt).toLocaleString()}`)} />}
+      {tab === 'API' && <DataPanel icon={KeyRound} title="Device API access" empty={false} description="Manage this device's keys in API Management." items={[`Device identifier: ${device.deviceId}`, 'WRITE keys are created during device onboarding.']} />}
+      {tab === 'Audit' && <DataPanel loading={panel.status === 'loading'} error={panel.error} icon={ScrollText} title="Device audit trail" empty={!panel.logs.length} description="No audit events have been recorded for this device." items={panel.logs.map((log) => `${log.actorName || 'System'} · ${log.action} · ${new Date(log.createdAt).toLocaleString()}`)} />}
     </div>
   );
+}
+
+function DataPanel({ loading, error, icon: Icon, title, empty, description, items }) {
+  if (loading) return <ChartSkeleton />;
+  if (error) return <ErrorState description={error} />;
+  if (empty) return <EmptyState icon={Icon} title={title} description={description} />;
+  return <GlassPanel className="p-5"><h2 className="flex items-center gap-2 text-sm font-semibold text-ink"><Icon className="h-4 w-4 text-cyan" />{title}</h2><div className="mt-4 flex flex-col divide-y divide-border/50">{items.map((item) => <p key={item} className="py-3 text-sm text-muted">{item}</p>)}</div></GlassPanel>;
 }
