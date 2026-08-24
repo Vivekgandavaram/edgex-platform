@@ -10,6 +10,7 @@ import ErrorState from '../components/ui/ErrorState';
 import Button from '../components/ui/Button';
 import { CardSkeleton } from '../components/ui/LoadingSkeleton';
 import NetworkTopology from '../components/domain/NetworkTopology';
+import { hasPermission } from '../lib/permissions';
 
 const HOUR = () => {
   const h = new Date().getHours();
@@ -20,19 +21,20 @@ const HOUR = () => {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [state, setState] = useState({ status: 'loading', devices: [], alerts: [], error: null });
+  const [state, setState] = useState({ status: 'loading', devices: [], alerts: [], totalDevices: 0, error: null });
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
     try {
       const [devicesRes, alertsRes] = await Promise.all([
-        endpoints.listDevices({ limit: 100 }),
-        endpoints.listAlerts({ status: 'ACTIVE', limit: 100 }),
+        hasPermission(user, 'devices.read') ? endpoints.listDevices({ limit: 100 }) : Promise.resolve(null),
+        hasPermission(user, 'alerts.read') ? endpoints.listAlerts({ status: 'ACTIVE', limit: 100 }) : Promise.resolve(null),
       ]);
       setState({
         status: 'ready',
-        devices: devicesRes.data.devices,
-        alerts: alertsRes.data.alerts,
+        devices: devicesRes?.data.devices || [],
+        alerts: alertsRes?.data.alerts || [],
+        totalDevices: devicesRes?.data.total || 0,
         error: null,
       });
     } catch (err) {
@@ -40,7 +42,7 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [user]); // eslint-disable-line
 
   const online = state.devices.filter((d) => d.status === 'ONLINE').length;
   const offline = state.devices.length - online;
@@ -54,26 +56,30 @@ export default function Dashboard() {
 
       {state.status === 'error' && <ErrorState description={state.error} onRetry={load} />}
 
-      {state.status !== 'error' && (
+      {state.status === 'ready' && !hasPermission(user, 'devices.read') && !hasPermission(user, 'alerts.read') && (
+        <EmptyState icon={Cpu} title="Workspace access is being configured" description="Your account is active, but no devices or analytics have been assigned yet. An administrator can grant access when your workspace is ready." />
+      )}
+
+      {state.status !== 'error' && (hasPermission(user, 'devices.read') || hasPermission(user, 'alerts.read')) && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {state.status === 'loading' ? (
             Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
           ) : (
             <>
-              <MetricCard label="Total Devices" value={state.devices.length} icon={Cpu} glow="bg-electric" empty={state.devices.length === 0} emptyText="No devices connected yet" />
-              <MetricCard label="Online Devices" value={online} icon={Radio} glow="bg-emerald" empty={state.devices.length === 0} emptyText="—" />
-              <MetricCard label="Offline Devices" value={offline} icon={Radio} glow="bg-muted" empty={state.devices.length === 0} emptyText="—" />
-              <MetricCard label="Active Alerts" value={state.alerts.length} icon={BellRing} glow={state.alerts.length ? 'bg-crimson' : 'bg-emerald'} empty={false} />
+              <MetricCard label="Total Devices" value={state.totalDevices} icon={Cpu} glow="bg-electric" empty={!hasPermission(user, 'devices.read')} emptyText="Restricted" />
+              <MetricCard label="Online Devices" value={online} icon={Radio} glow="bg-emerald" empty={!hasPermission(user, 'devices.read')} emptyText="Restricted" />
+              <MetricCard label="Offline Devices" value={offline} icon={Radio} glow="bg-muted" empty={!hasPermission(user, 'devices.read')} emptyText="Restricted" />
+              <MetricCard label="Active Alerts" value={state.alerts.length} icon={BellRing} glow={state.alerts.length ? 'bg-crimson' : 'bg-emerald'} empty={!hasPermission(user, 'alerts.read')} emptyText="Restricted" />
             </>
           )}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <GlassPanel className="p-5 xl:col-span-2">
+      {(hasPermission(user, 'devices.read') || hasPermission(user, 'alerts.read')) && <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {hasPermission(user, 'devices.read') && <GlassPanel className="p-5 xl:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Network Topology</h2>
-            <Link to="/devices"><Button variant="ghost" className="!py-1.5 !px-3 text-xs"><Plus className="h-3.5 w-3.5" /> Add Device</Button></Link>
+            {hasPermission(user, 'devices.create') && <Link to="/devices"><Button variant="ghost" className="!py-1.5 !px-3 text-xs"><Plus className="h-3.5 w-3.5" /> Add Device</Button></Link>}
           </div>
           {state.status === 'loading' ? (
             <div className="h-72 rounded-xl shimmer" />
@@ -87,9 +93,9 @@ export default function Dashboard() {
           ) : (
             <NetworkTopology devices={state.devices} />
           )}
-        </GlassPanel>
+        </GlassPanel>}
 
-        <GlassPanel className="p-5">
+        {hasPermission(user, 'alerts.read') && <GlassPanel className="p-5">
           <h2 className="mb-4 text-sm font-semibold text-ink">Active Alerts</h2>
           {state.status === 'loading' ? (
             <div className="h-72 rounded-xl shimmer" />
@@ -108,8 +114,8 @@ export default function Dashboard() {
               ))}
             </div>
           )}
-        </GlassPanel>
-      </div>
+        </GlassPanel>}
+      </div>}
     </div>
   );
 }
