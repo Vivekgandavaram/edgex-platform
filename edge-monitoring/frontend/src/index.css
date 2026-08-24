@@ -34,6 +34,9 @@ body {
 .theme-light .bg-black\/60 { background-color: rgba(23,32,42,0.42); }
 .theme-light ::-webkit-scrollbar-thumb { background: rgba(23,32,42,0.18); }
 
+.dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: 80px; gap: 1rem; background-image: linear-gradient(rgba(148,163,184,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.07) 1px, transparent 1px); background-size: 20px 20px; border: 1px solid rgba(148,163,184,0.10); border-radius: 1rem; padding: 1rem; }
+@media (max-width: 767px) { .dashboard-grid { display: flex; flex-direction: column; } .dashboard-grid > * { min-height: 220px; } }
+
 /* Premium display type for headings and the wordmark — Inter alone reads
    flat at large sizes, Outfit gives headings real character. */
 h1, h2, h3,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyRound, Plus, RotateCw, Ban, Copy, Check } from 'lucide-react';
+import { KeyRound, Plus, RotateCw, Ban, Copy, Check, Eye } from 'lucide-react';
 import { endpoints } from '../lib/api';
 import GlassPanel from '../components/ui/GlassPanel';
 import Button from '../components/ui/Button';
@@ -44,6 +44,7 @@ export default function ApiManagement() {
           <button key={t || 'all'} onClick={() => setTypeFilter(t)} className={`rounded-md px-3 py-1.5 text-xs ${typeFilter === t ? 'bg-white/[0.08] text-ink' : 'text-muted hover:text-ink'}`}>{t || 'All'}</button>
         ))}
       </div>
+      <p className="text-xs text-muted">Secrets are one-way encrypted and cannot be viewed again. Use rotate to generate a replacement key and reveal it once.</p>
 
       {state.status === 'error' && <ErrorState description={state.error} onRetry={load} />}
       {state.status === 'loading' && <div className="flex flex-col gap-2">{Array.from({ length: 4 }).map((_, i) => <RowSkeleton key={i} />)}</div>}
@@ -60,7 +61,7 @@ export default function ApiManagement() {
                 <th className="px-5 py-3 font-medium">API ID</th>
                 <th className="px-5 py-3 font-medium">Type</th>
                 <th className="px-5 py-3 font-medium">Assigned To</th>
-                <th className="px-5 py-3 font-medium">Key</th>
+                <th className="px-5 py-3 font-medium">Encrypted preview</th>
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium">Last Used</th>
                 <th className="px-5 py-3 font-medium">Requests</th>
@@ -73,14 +74,14 @@ export default function ApiManagement() {
                   <td className="px-5 py-3.5 font-tabular text-ink">{k.apiId}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={k.type === 'WRITE' ? 'INFO' : 'ACTIVE'} label={k.type} /></td>
                   <td className="px-5 py-3.5 text-muted">{k.deviceId?.name || k.assignedTo?.name || '—'}</td>
-                  <td className="px-5 py-3.5 font-tabular text-xs text-muted">{k.keyPreview}</td>
+                  <td className="px-5 py-3.5 font-tabular text-xs text-muted"><span className="inline-flex items-center gap-2" title="The original secret cannot be recovered from its one-way hash.">{k.keyPreview}<Eye className="h-3.5 w-3.5" /></span></td>
                   <td className="px-5 py-3.5"><StatusBadge status={k.status} /></td>
                   <td className="px-5 py-3.5 font-tabular text-xs text-muted">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : 'Never'}</td>
                   <td className="px-5 py-3.5 font-tabular text-xs text-muted">{k.requestCount}</td>
                   <td className="px-5 py-3.5">
                     {k.status === 'ACTIVE' && (
                       <div className="flex gap-2">
-                        <button onClick={() => rotate(k._id)} className="text-muted hover:text-ink" title="Rotate"><RotateCw className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => rotate(k._id)} className="text-muted hover:text-ink" title="Rotate and reveal a new key"><RotateCw className="h-3.5 w-3.5" /></button>
                         <button onClick={() => revoke(k._id)} className="text-muted hover:text-crimson" title="Revoke"><Ban className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
