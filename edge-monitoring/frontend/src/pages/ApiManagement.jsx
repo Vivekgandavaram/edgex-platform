@@ -13,6 +13,7 @@ export default function ApiManagement() {
   const [typeFilter, setTypeFilter] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [reveal, setReveal] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   const load = async () => {
     setState((s) => ({ ...s, status: 'loading', error: null }));
@@ -74,7 +75,7 @@ export default function ApiManagement() {
                   <td className="px-5 py-3.5 font-tabular text-ink">{k.apiId}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={k.type === 'WRITE' ? 'INFO' : 'ACTIVE'} label={k.type} /></td>
                   <td className="px-5 py-3.5 text-muted">{k.deviceId?.name || k.assignedTo?.name || '—'}</td>
-                  <td className="px-5 py-3.5 font-tabular text-xs text-muted"><span className="inline-flex items-center gap-2" title="The original secret cannot be recovered from its one-way hash.">{k.keyPreview}<Eye className="h-3.5 w-3.5" /></span></td>
+                  <td className="px-5 py-3.5 font-tabular text-xs text-muted"><button type="button" onClick={() => setViewing(k)} className="inline-flex items-center gap-2 hover:text-ink" title="View key information"><span>{k.keyPreview}</span><Eye className="h-3.5 w-3.5" /></button></td>
                   <td className="px-5 py-3.5"><StatusBadge status={k.status} /></td>
                   <td className="px-5 py-3.5 font-tabular text-xs text-muted">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : 'Never'}</td>
                   <td className="px-5 py-3.5 font-tabular text-xs text-muted">{k.requestCount}</td>
@@ -95,8 +96,18 @@ export default function ApiManagement() {
 
       {createOpen && <CreateKeyModal onClose={() => setCreateOpen(false)} onCreated={(key) => { setReveal(key); load(); }} />}
       {reveal && <RevealKeyModal apiKey={reveal} onClose={() => setReveal(null)} />}
+      {viewing && <KeyViewModal apiKey={viewing} onClose={() => setViewing(null)} onRotated={(key) => { setViewing(null); setReveal(key); load(); }} />}
     </div>
   );
+}
+
+function KeyViewModal({ apiKey, onClose, onRotated }) {
+  const [state, setState] = useState({ loading: false, error: '' });
+  const rotate = async () => {
+    setState({ loading: true, error: '' });
+    try { const response = await endpoints.rotateApiKey(apiKey._id); onRotated(response.data.apiKey); } catch (err) { setState({ loading: false, error: err.message }); }
+  };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}><GlassPanel strong className="w-full max-w-md p-6" onClick={(event) => event.stopPropagation()}><h2 className="text-lg font-semibold text-ink">{apiKey.apiId} key</h2><p className="mt-2 text-sm text-muted">Stored preview</p><div className="mt-2 rounded-xl border border-border bg-white/[0.04] p-3 font-tabular text-sm text-ink">{apiKey.keyPreview}</div><p className="mt-4 text-xs leading-relaxed text-muted">The original secret is not recoverable from its one-way hash. Rotate this active key to revoke the forgotten secret and reveal a new replacement once.</p>{state.error && <p className="mt-3 text-xs text-crimson">{state.error}</p>}<div className="mt-5 flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Close</Button>{apiKey.status === 'ACTIVE' && <Button onClick={rotate} disabled={state.loading}><RotateCw className="h-4 w-4" />{state.loading ? 'Rotating...' : 'Rotate and reveal'}</Button>}</div></GlassPanel></div>;
 }
 
 function CreateKeyModal({ onClose, onCreated }) {
