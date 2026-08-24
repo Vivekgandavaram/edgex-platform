@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './lib/auth-context';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/layout/AppShell';
 import { canAccessRoute } from './lib/permissions';
+import { ThemeProvider } from './lib/theme.jsx';
 
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -48,7 +49,7 @@ function AppRoutes() {
         <Route path="/analytics" element={canAccessRoute(user, '/analytics') ? <Analytics /> : <Navigate to="/" replace />} />
         <Route path="/alerts" element={canAccessRoute(user, '/alerts') ? <Alerts /> : <Navigate to="/" replace />} />
         <Route path="/api-management" element={canAccessRoute(user, '/api-management') ? <ApiManagement /> : <Navigate to="/" replace />} />
-        <Route path="/api-docs" element={canAccessRoute(user, '/api-docs') ? <ApiDocumentation /> : <Navigate to="/" replace />} />
+        <Route path="/api-docs" element={<ApiDocumentation />} />
         <Route path="/users" element={canAccessRoute(user, '/users') ? <Users /> : <Navigate to="/" replace />} />
         <Route path="/admins" element={canAccessRoute(user, '/admins') ? <Admins /> : <Navigate to="/" replace />} />
         <Route path="/roles" element={canAccessRoute(user, '/roles') ? <RolesPermissions /> : <Navigate to="/" replace />} />
@@ -63,10 +64,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

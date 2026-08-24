@@ -1,8 +1,12 @@
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, Code2, Sun, Moon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth-context';
+import { hasPermission } from '../../lib/permissions';
+import { useTheme } from '../../lib/theme.jsx';
 
 export default function TopBar({ onOpenCommandPalette }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const greetingName = user?.name?.split(' ')[0] || '';
 
@@ -18,6 +22,8 @@ export default function TopBar({ onOpenCommandPalette }) {
       </button>
 
       <div className="flex items-center gap-3">
+        <Link to="/api-docs" title="Open API view" aria-label="Open API view" className="rounded-xl border border-border bg-white/[0.03] p-2.5 text-muted transition-colors hover:bg-white/[0.06]"><Code2 className="h-4 w-4" /></Link>
+        <button onClick={toggleTheme} title={theme === 'dark' ? 'Use light theme' : 'Use dark theme'} aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'} className="rounded-xl border border-border bg-white/[0.03] p-2.5 text-muted transition-colors hover:bg-white/[0.06]">{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
         <button className="relative rounded-xl border border-border bg-white/[0.03] p-2.5 text-muted transition-colors hover:bg-white/[0.06]" aria-label="Notifications">
           <Bell className="h-4 w-4" strokeWidth={1.75} />
         </button>

@@ -11,6 +11,7 @@ import Button from '../components/ui/Button';
 import { CardSkeleton } from '../components/ui/LoadingSkeleton';
 import NetworkTopology from '../components/domain/NetworkTopology';
 import { hasPermission } from '../lib/permissions';
+import DashboardWidgets from '../components/domain/DashboardWidgets';
 
 const HOUR = () => {
   const h = new Date().getHours();
@@ -116,6 +117,7 @@ export default function Dashboard() {
           )}
         </GlassPanel>}
       </div>}
+      <DashboardWidgets />
     </div>
   );
 }
